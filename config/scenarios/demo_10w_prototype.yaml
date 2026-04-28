@@ -1,0 +1,43 @@
+# 10W Solar Prototype Configuration
+# Your current setup!
+
+extends: ../system_config.yaml
+
+system:
+  name: "10W Solar Prototype - Beckn P2P Trading Demo"
+  mode: "demo"
+
+power_system:
+  base_power_mva: 0.00001
+  base_voltage_kv: 12
+  normalization_factor: 1.0
+
+der_config:
+  num_ders: 3
+  der_1:
+    name: "My 10W Solar Panel"
+    rated_capacity_w: 10
+    
+  der_2:
+    name: "Sim Solar #2"
+    rated_capacity_w: 8
+    
+  der_3:
+    name: "Sim Battery"
+    rated_capacity_w: 15
+
+loads_config:
+  num_loads: 2
+  load_1:
+    rated_load_w: 3
+  load_2:
+    rated_load_w: 2
+
+hardware:
+  arduino:
+    enabled: false
+  simulation:
+    enabled: true
+    der_1_power_profile: "sunny"
+    der_2_power_profile: "variable"
+    der_3_power_profile: "steady"

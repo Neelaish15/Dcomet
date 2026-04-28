@@ -1,0 +1,158 @@
+# Dcomet - Beckn P2P Energy Trading System
+# Configuration file - ALL parameters here!
+
+system:
+  name: "Dcomet Beckn P2P Energy Trading"
+  description: "Decentralized energy marketplace with AI agents"
+  mode: "demo"  # "demo" = use fallback, "simulation" or "live" = try Ollama
+  debug: true
+
+# ========== POWER SYSTEM ==========
+power_system:
+  base_power_mva: 0.00001  # 10W = 0.00001 MVA
+  base_voltage_kv: 12      # 12V system
+  normalization_factor: 1.0  # 1.0 = actual values
+
+# ========== GRID ==========
+grid:
+  profile: "simple_4bus"
+  file: "config/grid_profiles/simple_4bus.yaml"
+
+# ========== DER CONFIGURATION ==========
+der_config:
+  num_ders: 3
+  
+  der_1:
+    name: "Solar #1 (My 10W Panel)"
+    type: "solar"
+    rated_capacity_w: 10
+    nominal_voltage_v: 12
+    max_power_output_w: 10
+    efficiency: 0.85
+    connected_bus: 4
+    grid_node_latitude: 40.7128
+    grid_node_longitude: -74.0060
+    
+  der_2:
+    name: "Solar #2 (Simulated)"
+    type: "solar"
+    rated_capacity_w: 8
+    nominal_voltage_v: 12
+    max_power_output_w: 8
+    efficiency: 0.85
+    connected_bus: 4
+    grid_node_latitude: 40.7129
+    grid_node_longitude: -74.0061
+    
+  der_3:
+    name: "Battery Storage (Simulated)"
+    type: "battery"
+    rated_capacity_w: 15
+    nominal_voltage_v: 12
+    max_power_output_w: 15
+    efficiency: 0.92
+    connected_bus: 4
+    grid_node_latitude: 40.7130
+    grid_node_longitude: -74.0062
+
+# ========== LOAD CONFIGURATION ==========
+loads_config:
+  num_loads: 2
+  
+  load_1:
+    name: "Residential Load"
+    connected_bus: 2
+    rated_load_w: 3
+    min_load_w: 1
+    max_load_w: 5
+    profile: "constant"
+    grid_node_latitude: 40.7131
+    grid_node_longitude: -74.0063
+    
+  load_2:
+    name: "Commercial Load"
+    connected_bus: 4
+    rated_load_w: 2
+    min_load_w: 1
+    max_load_w: 4
+    profile: "variable"
+    grid_node_latitude: 40.7132
+    grid_node_longitude: -74.0064
+
+# ========== TRADING CONFIGURATION ==========
+trading:
+  marketplace_type: "beckn_deg"
+  price_per_unit_usd_per_wh: 0.50
+  trading_interval_seconds: 5
+  settlement_method: "immediate"
+  
+  constraints:
+    max_line_loading_percent: 85
+    voltage_tolerance_percent: 10
+    max_trading_quantity_percent: 80
+
+# ========== BECKN CONFIGURATION ==========
+beckn:
+  mode: "local"
+  version: "0.4.0"
+  domain: "energy"
+  
+  registry_url: "http://localhost:8001"
+  bpp_port: 8002
+  bap_port: 8003
+  
+  # Local implementation (no external gateway)
+  use_local_impl: true
+
+# ========== AGENT CONFIGURATION ==========
+agents:
+  der_agents:
+    num_agents: 3
+    llm_model: "mistral"
+    llm_endpoint: "http://localhost:11434"
+    timeout_seconds: 1
+    
+  consumer_agents:
+    num_agents: 1
+    llm_model: "mistral"
+    llm_endpoint: "http://localhost:11434"
+    timeout_seconds: 1
+    
+  dso_agent:
+    enabled: true
+    llm_model: "mistral"
+    llm_endpoint: "http://localhost:11434"
+    timeout_seconds: 1
+
+# ========== HARDWARE ==========
+hardware:
+  arduino:
+    enabled: false
+    port: "COM3"
+    baudrate: 9600
+    read_interval_seconds: 1
+    
+  simulation:
+    enabled: true
+    der_1_power_profile: "sunny"
+    der_2_power_profile: "variable"
+    der_3_power_profile: "steady"
+
+# ========== LOGGING ==========
+logging:
+  level: "INFO"
+  log_file: "logs/dcomet.log"
+  log_trades: true
+  log_grid_state: true
+  log_interval_seconds: 5
+
+# ========== DATABASE ==========
+database:
+  type: "sqlite"
+  file: "data/dcomet.db"
+
+# ========== API ==========
+api:
+  enabled: true
+  port: 5000
+  host: "0.0.0.0"

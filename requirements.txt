@@ -1,0 +1,5 @@
+pandapower>=2.11.0
+matplotlib>=3.5.0
+pyyaml>=6.0
+requests>=2.31.0
+autogen-agentchat>=0.2.0
