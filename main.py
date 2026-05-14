@@ -14,8 +14,8 @@ from agents.agent_manager import AgentManager
 from utils.logger import get_logger
 
 class DcometSystem:
-    def __init__(self, config_path: str = "config/scenarios/demo_10w_prototype.yaml"):
-        print(f"\n{'='*60}\nDCOMET - Beckn P2P Energy Trading System\nDemo: 10W Solar\n{'='*60}\n")
+    def __init__(self, config_path: str = "config/scenarios/demo_realistic_3kw_plus.yaml"):
+        print(f"\n{'='*60}\nDCOMET - Beckn P2P Energy Trading System\nDemo: Realistic Solar (3kW+)\n{'='*60}\n")
         self.config = get_config(config_path)
         self.logger = get_logger("dcomet", level=self.config.get('logging.level', 'INFO'))
         self.logger.info("Initializing System...")
@@ -70,75 +70,62 @@ class DcometSystem:
             print(f"  {der_id}: {power_w:.2f}W")
             total_available += power_w
         print(f"  TOTAL: {total_available:.2f}W")
-        self.logger.info("[2] DERs announcing on Beckn...")
-        print("\n[Beckn Marketplace - DER Announcements]")
-        beckn_offers = {}
-        for der_id, available_w in available_power.items():
-            if available_w > 0:
-                bpp = self.beckn_bpps[der_id]
-                offer = bpp.create_search_response({}, available_w)
-                beckn_offers[der_id] = offer
-                print(f"  {der_id}: {available_w:.2f}W @ $0.50/Wh")
-        self.logger.info("[3] AI agents deciding...")
+        
+        self.logger.info("[2] AI agents deciding (logic-based + ML)...")
+        print("\n[Agent Decision Making]")
+        
+        # Prepare system state for agents
+        num_consumers = self.config.get('loads_config.num_loads', 1)
+        consumer_demand = {f'consumer_{i}': 2.5 + i * 0.5 for i in range(1, num_consumers + 1)}
+        total_demand = sum(consumer_demand.values())
+        
         system_state = {
-            'der_outputs': {k: v['power_w'] for k, v in der_data.items()},
-            'available_offers': list(beckn_offers.values()),
-            'grid_voltage_pu': 1.0,
-            'line_loading_percent': 10.0,
-            'proposed_injection_w': total_available,
-            'total_load_w': 5.0,
-            'active_trades': len(self.trading_engine.active_trades),
-            'load_demands': {f'consumer_{i}': 2.0 for i in range(1, self.config.get('loads_config.num_loads', 1) + 1)}
+            'voltage_pu': 1.0,
+            'frequency_hz': 50.0,
+            'line_loading_pct': 15.0,
+            'consumer_demand_w': consumer_demand,
+            'total_budget_spent': 0,
+            'timestamp': datetime.now().isoformat()
         }
+        
+        # Update agents with measurements
+        self.agent_manager.update_system_measurements(der_data, system_state)
+        
+        # Run orchestration with logic-based agents
         decisions = self.agent_manager.orchestrate_trading_cycle(system_state)
-        print("\n[Agent Decisions]")
-        print("  DER Decisions:")
-        for i, dec in enumerate(decisions['der_decisions'], 1):
-            print(f"    DER {i}: Sell={dec.get('sell', False)}, Offer={dec.get('offer_percentage', 0)}%")
-        print("  Consumer Decisions:")
-        for i, dec in enumerate(decisions['consumer_decisions'], 1):
-            print(f"    Consumer {i}: Buy={dec.get('buy', False)}, Qty={dec.get('quantity_w', 0):.1f}W")
-        if decisions['dso_decision']:
-            print(f"  DSO: Approve={decisions['dso_decision'].get('approve', False)}")
-        self.logger.info("[4] Matching...")
-        available_ders = []
-        for i, dec in enumerate(decisions['der_decisions'], 1):
-            if dec.get('sell', False):
-                available_ders.append({
-                    'id': f'der_{i}',
-                    'name': self.config.get(f'der_config.der_{i}.name', f'DER {i}'),
-                    'available_power_w': (available_power[f'der_{i}'] * dec.get('offer_percentage', 80) / 100)
-                })
-        active_loads = []
-        for i, dec in enumerate(decisions['consumer_decisions'], 1):
-            if dec.get('buy', False):
-                active_loads.append({
-                    'id': f'consumer_{i}',
-                    'name': self.config.get(f'loads_config.load_{i}.name', f'Consumer {i}'),
-                    'need_power_w': dec.get('quantity_w', 0)
-                })
-        trades = self.trading_engine.match_buyers_sellers(available_ders, active_loads)
-        print("\n[Grid Stability Check]")
-        approved_trades = []
-        for trade in trades:
-            dso_approval = decisions['dso_decision'].get('approve', True)
-            if dso_approval:
-                trade_result = self.trading_engine.execute_trade(trade)
-                approved_trades.append(trade_result)
-                print(f"  [OK] Trade APPROVED: {trade['quantity_w']:.2f}W")
-            else:
-                print(f"  [XX] Trade REJECTED")
-        self.logger.info("[5] Power flow...")
+        
+        print("\n[DER Offers]")
+        for offer in decisions['der_decisions']:
+            print(f"  {offer['der_id']}: {offer['quantity_w']:.2f}W @ ${offer['price_usd']:.3f}/W")
+        
+        print("\n[Consumer Requests]")
+        for req in decisions['consumer_decisions']:
+            print(f"  {req['consumer_id']}: {req['quantity_w']:.2f}W (max ${req['max_price']:.3f})")
+        
+        print("\n[Executed Trades]")
+        for trade in decisions['executed_trades']:
+            print(f"  [{trade['trade_id']}] {trade['seller_id']} -> {trade['buyer_id']}: {trade['quantity_kwh']:.5f} kWh @ ${trade['price_usd']:.3f}")
+        
+        print("\n[ML Insights]")
+        ml_insights = decisions['ml_insights']
+        print(f"  Solar Prediction Confidence: {ml_insights['solar_prediction_confidence']:.1%}")
+        print(f"  Demand Model Trained: {ml_insights['demand_model_trained']}")
+        total_cycles_trained = ml_insights.get('cycle_count', ml_insights.get('cycles_trained', 0))
+        print(f"  Total Cycles Trained: {total_cycles_trained}")
+        
+        # Store trades for API and summary
+        for trade in decisions['executed_trades']:
+            self.trading_engine.active_trades[trade['trade_id']] = trade
+        
+        self.logger.info("[3] Power flow simulation...")
         pf_results = self.grid_engine.run_power_flow()
         print("\n[Power Flow Results]")
         if pf_results['converged']:
             print("  [OK] Power flow converged")
         else:
             print("  [XX] Power flow did not converge!")
-        print("\n[Trading Summary]")
-        summary = self.trading_engine.get_trade_summary()
-        print(f"  Active: {summary['active_trades']}, Energy: {summary['total_energy_traded_wh']:.3f}Wh, Revenue: ${summary['total_revenue_usd']:.2f}")
-        return approved_trades
+        
+        return decisions['executed_trades']
     
     def run_demo(self, num_cycles: int = 10):
         print(f"\n{'='*60}\nDCOMET DEMO: Running {num_cycles} cycles\n{'='*60}")
@@ -167,7 +154,7 @@ class DcometSystem:
         print(f"Done!\n{'='*60}\n")
 
 def main():
-    system = DcometSystem("config/scenarios/demo_10w_prototype.yaml")
+    system = DcometSystem("config/scenarios/demo_realistic_3kw_plus.yaml")
     system.run_demo(num_cycles=5)
 
 if __name__ == "__main__":

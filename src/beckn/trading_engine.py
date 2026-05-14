@@ -252,51 +252,93 @@ class TradingEngine:
         self.active_trades = {}
         self.completed_trades = []
         self.price_per_wh = config.get('trading.price_per_unit_usd_per_wh', 0.50)
+        self.max_line_loading_pct = config.get('grid.max_line_loading_pct', 80.0)
+        self.seller_utilization = {}
     
-    def match_buyers_sellers(self, 
+    def match_buyers_sellers(
+                            self,
                             available_ders: List[Dict],
-                            active_loads: List[Dict]) -> List[Dict]:
+                            active_loads: List[Dict],
+                            line_loading_pct: float = 0.0) -> List[Dict]:
         """
         Match DERs with excess power to consumers needing power.
         Works at ANY scale - demo with 10W, scale to 1MW!
         """
         trades = []
-        
+        if not available_ders or not active_loads:
+            return trades
+
+        # Score candidate pairs by social welfare proxy.
+        candidates = []
         for der in available_ders:
-            if der['available_power_w'] > 0:  # Has excess
-                
-                for load in active_loads:
-                    if load['need_power_w'] > 0:  # Needs power
-                        
-                        # Find best match
-                        trade_quantity = min(
-                            der['available_power_w'],
-                            load['need_power_w']
-                        )
-                        
-                        if trade_quantity > 0:
-                            # Calculate energy assuming 1-hour delivery period for demo purposes
-                            quantity_wh = trade_quantity * 1.0  # 1W * 1hr = 1Wh
-                            price_usd = quantity_wh * self.price_per_wh
-                            
-                            trade = {
-                                'trade_id': str(uuid.uuid4()),
-                                'der_id': der['id'],
-                                'der_name': der['name'],
-                                'consumer_id': load['id'],
-                                'consumer_name': load['name'],
-                                'quantity_w': trade_quantity,
-                                'quantity_wh': quantity_wh,
-                                'price_usd': price_usd,
-                                'status': 'proposed',
-                                'timestamp': datetime.utcnow().isoformat()
-                            }
-                            trades.append(trade)
-                            
-                            # Update availability
-                            der['available_power_w'] -= trade_quantity
-                            load['need_power_w'] -= trade_quantity
-        
+            if der['available_power_w'] <= 0:
+                continue
+            for load in active_loads:
+                if load['need_power_w'] <= 0:
+                    continue
+                quantity_w = min(der['available_power_w'], load['need_power_w'])
+                if quantity_w <= 0:
+                    continue
+
+                der_price = float(der.get('price_usd', self.price_per_wh))
+                buyer_limit = float(load.get('max_price_usd', der_price + 0.05))
+                utility_score = max(0.0, buyer_limit - der_price)
+                congestion_penalty = max(0.0, (line_loading_pct / max(self.max_line_loading_pct, 1.0)) - 0.5) * 0.03
+                fairness_penalty = self.seller_utilization.get(der['id'], 0) * 0.005
+                welfare_score = utility_score - congestion_penalty - fairness_penalty
+
+                candidates.append({
+                    'der': der,
+                    'load': load,
+                    'quantity_w': quantity_w,
+                    'der_price': der_price,
+                    'welfare_score': welfare_score,
+                    'explainability': {
+                        'utility_score': round(float(utility_score), 6),
+                        'congestion_penalty': round(float(congestion_penalty), 6),
+                        'fairness_penalty': round(float(fairness_penalty), 6),
+                        'line_loading_pct': round(float(line_loading_pct), 6),
+                    },
+                })
+
+        candidates.sort(key=lambda item: item['welfare_score'], reverse=True)
+
+        for candidate in candidates:
+            der = candidate['der']
+            load = candidate['load']
+            if der['available_power_w'] <= 0 or load['need_power_w'] <= 0:
+                continue
+
+            trade_quantity = min(der['available_power_w'], load['need_power_w'])
+            if trade_quantity <= 0:
+                continue
+
+            quantity_wh = trade_quantity * 1.0
+            price_usd = quantity_wh * candidate['der_price']
+
+            trade = {
+                'trade_id': str(uuid.uuid4()),
+                'der_id': der['id'],
+                'der_name': der['name'],
+                'consumer_id': load['id'],
+                'consumer_name': load['name'],
+                'quantity_w': trade_quantity,
+                'quantity_wh': quantity_wh,
+                'price_usd': price_usd,
+                'status': 'proposed',
+                'timestamp': datetime.utcnow().isoformat(),
+                'explainability': {
+                    **candidate['explainability'],
+                    'welfare_score': round(float(candidate['welfare_score']), 6),
+                    'pricing_rate_usd_per_wh': round(float(candidate['der_price']), 6),
+                },
+            }
+            trades.append(trade)
+
+            der['available_power_w'] -= trade_quantity
+            load['need_power_w'] -= trade_quantity
+            self.seller_utilization[der['id']] = self.seller_utilization.get(der['id'], 0) + 1
+
         return trades
     
     def verify_grid_stability(self, trade: Dict, power_calculator) -> bool:

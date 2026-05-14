@@ -67,32 +67,37 @@ class SensorReader:
         """Generate realistic simulated power output"""
         profile_key = f'hardware.simulation.der_{self.der_id}_power_profile'
         profile = self.config.get(profile_key, 'variable')
+        capacity = self.config.get(f'der_config.der_{self.der_id}.rated_capacity_w', 3000.0)
+        nominal_voltage = self.config.get(f'der_config.der_{self.der_id}.nominal_voltage_v', 230.0)
         
         elapsed = time.time() - self.start_time
+        # Start near daytime output so demo data is meaningful immediately.
+        solar_curve = max(0, math.sin((elapsed / 3600) + (math.pi / 3)))
         
         if profile == "sunny":
-            # Sunny day: 0-10W (sine wave over ~1 hour cycle)
-            power_w = 10 * max(0, math.sin(elapsed / 3600))
+            # Sunny day output tracks a smooth solar curve.
+            power_w = capacity * solar_curve
             
         elif profile == "variable":
-            # Variable: sine + random variation
-            power_w = 8 * max(0, math.sin(elapsed / 3600) + 0.2 * math.sin(elapsed / 120))
+            # Variable profile adds cloud-like fluctuations around the solar curve.
+            variability = 0.85 * solar_curve + 0.15 * math.sin(elapsed / 120)
+            power_w = capacity * max(0, variability)
             
         elif profile == "steady":
             # Steady: constant 70% of capacity
-            capacity = self.config.get(f'der_config.der_{self.der_id}.rated_capacity_w', 10)
             power_w = capacity * 0.7
             
         else:
             power_w = 0
         
-        # Add some noise
+        # Add small noise relative to plant size.
         import random
-        power_w += random.uniform(-0.5, 0.5)
+        noise_band_w = max(5.0, capacity * 0.02)
+        power_w += random.uniform(-noise_band_w, noise_band_w)
         power_w = max(0, power_w)
         
-        # Calculate current and voltage (assuming 12V system)
-        voltage_v = 12.0
+        # Calculate current and voltage using configured nominal DER voltage.
+        voltage_v = float(nominal_voltage)
         current_a = power_w / voltage_v if voltage_v > 0 else 0
         
         return {

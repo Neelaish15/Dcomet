@@ -9,8 +9,8 @@ system:
 
 # ========== POWER SYSTEM ==========
 power_system:
-  base_power_mva: 0.00001  # 10W = 0.00001 MVA
-  base_voltage_kv: 12      # 12V system
+  base_power_mva: 0.02     # 20 kW class neighborhood baseline
+  base_voltage_kv: 0.415   # 415V LV distribution side
   normalization_factor: 1.0  # 1.0 = actual values
 
 # ========== GRID ==========
@@ -23,33 +23,33 @@ der_config:
   num_ders: 3
   
   der_1:
-    name: "Solar #1 (My 10W Panel)"
+    name: "Solar Rooftop #1"
     type: "solar"
-    rated_capacity_w: 10
-    nominal_voltage_v: 12
-    max_power_output_w: 10
+    rated_capacity_w: 3000
+    nominal_voltage_v: 230
+    max_power_output_w: 3000
     efficiency: 0.85
     connected_bus: 4
     grid_node_latitude: 40.7128
     grid_node_longitude: -74.0060
     
   der_2:
-    name: "Solar #2 (Simulated)"
+    name: "Solar Rooftop #2"
     type: "solar"
-    rated_capacity_w: 8
-    nominal_voltage_v: 12
-    max_power_output_w: 8
+    rated_capacity_w: 4000
+    nominal_voltage_v: 230
+    max_power_output_w: 4000
     efficiency: 0.85
     connected_bus: 4
     grid_node_latitude: 40.7129
     grid_node_longitude: -74.0061
     
   der_3:
-    name: "Battery Storage (Simulated)"
+    name: "Solar Rooftop #3"
     type: "battery"
-    rated_capacity_w: 15
-    nominal_voltage_v: 12
-    max_power_output_w: 15
+    rated_capacity_w: 5000
+    nominal_voltage_v: 230
+    max_power_output_w: 5000
     efficiency: 0.92
     connected_bus: 4
     grid_node_latitude: 40.7130
@@ -62,9 +62,9 @@ loads_config:
   load_1:
     name: "Residential Load"
     connected_bus: 2
-    rated_load_w: 3
-    min_load_w: 1
-    max_load_w: 5
+    rated_load_w: 1800
+    min_load_w: 800
+    max_load_w: 2800
     profile: "constant"
     grid_node_latitude: 40.7131
     grid_node_longitude: -74.0063
@@ -72,9 +72,9 @@ loads_config:
   load_2:
     name: "Commercial Load"
     connected_bus: 4
-    rated_load_w: 2
-    min_load_w: 1
-    max_load_w: 4
+    rated_load_w: 2500
+    min_load_w: 1200
+    max_load_w: 4200
     profile: "variable"
     grid_node_latitude: 40.7132
     grid_node_longitude: -74.0064
@@ -82,7 +82,7 @@ loads_config:
 # ========== TRADING CONFIGURATION ==========
 trading:
   marketplace_type: "beckn_deg"
-  price_per_unit_usd_per_wh: 0.50
+  price_per_unit_usd_per_wh: 0.00025
   trading_interval_seconds: 5
   settlement_method: "immediate"
   

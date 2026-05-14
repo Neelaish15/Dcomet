@@ -1,0 +1,56 @@
+# Realistic Residential/Community Solar Configuration
+
+extends: ../system_config.yaml
+
+system:
+  name: "Realistic Solar 3kW+ - Beckn P2P Trading Demo"
+  mode: "demo"
+
+power_system:
+  base_power_mva: 0.02
+  base_voltage_kv: 0.415
+  normalization_factor: 1.0
+
+der_config:
+  num_ders: 3
+  der_1:
+    name: "Rooftop Solar A (3 kW)"
+    rated_capacity_w: 3000
+    max_power_output_w: 3000
+    nominal_voltage_v: 230
+
+  der_2:
+    name: "Rooftop Solar B (4 kW)"
+    rated_capacity_w: 4000
+    max_power_output_w: 4000
+    nominal_voltage_v: 230
+
+  der_3:
+    name: "Rooftop Solar C (5 kW)"
+    rated_capacity_w: 5000
+    max_power_output_w: 5000
+    nominal_voltage_v: 230
+
+loads_config:
+  num_loads: 2
+  load_1:
+    rated_load_w: 1800
+    min_load_w: 800
+    max_load_w: 2800
+  load_2:
+    rated_load_w: 2500
+    min_load_w: 1200
+    max_load_w: 4200
+
+trading:
+  # 0.00025 USD/Wh == 0.25 USD/kWh
+  price_per_unit_usd_per_wh: 0.00025
+
+hardware:
+  arduino:
+    enabled: false
+  simulation:
+    enabled: true
+    der_1_power_profile: "sunny"
+    der_2_power_profile: "variable"
+    der_3_power_profile: "steady"

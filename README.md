@@ -1,46 +1,71 @@
-# Dcomet Project Setup Instructions
+# DCOMET
 
-This project uses a virtual environment for dependency management and reproducibility.
+DCOMET is a local P2P energy trading prototype that combines:
 
-## Setup Steps
+- a Python backend simulation and agent orchestration layer
+- a React + Vite dashboard frontend
 
-1. **Create and Activate Virtual Environment**
-   - The `.venv` folder is already created for you.
-   - To activate on Windows (PowerShell):
-     ```powershell
-     .venv\Scripts\Activate.ps1
-     ```
-   - To activate on Windows (cmd):
-     ```cmd
-     .venv\Scripts\activate.bat
-     ```
+## Project Layout
 
-2. **Install Dependencies**
-   - All required dependencies are installed in the virtual environment.
-   - If you need to reinstall, run:
-     ```powershell
-     .venv\Scripts\python.exe -m pip install -r requirements.txt
-     ```
-
-3. **Run the Project**
-   - To run the main scripts:
-     ```powershell
-     .venv\Scripts\python.exe "DSO DER.py"
-     .venv\Scripts\python.exe "DSO SLD.py"
-     ```
-
-## Regenerating requirements.txt
-If you add new dependencies, regenerate `requirements.txt` with:
-```powershell
-.venv\Scripts\python.exe -m pip freeze > requirements.txt
+```
+config/
+	grid_profiles/
+	scenarios/
+	system_config.yaml
+logs/
+public/
+src/
+	agents/
+	assets/
+	beckn/
+	core/
+	hardware/
+	utils/
+	api.py
+	App.css
+	App.jsx
+	index.css
+	main.jsx
+tests/
+main.py
+requirements.txt
+index.html
+package.json
+vite.config.js
+eslint.config.js
 ```
 
----
+## Backend Setup (Python)
 
-## Project Structure
-- `DSO DER.py` — Main Python script
-- `DSO SLD.py` — Secondary Python script
-- `sketch_sep4a.ino` — Arduino sketch
-- `.venv/` — Virtual environment (do not edit manually)
-- `requirements.txt` — Python dependencies
-- `README.md` — Project instructions (this file)
+1. Create and activate a virtual environment.
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+3. Run the simulation entry point:
+
+```bash
+python main.py
+```
+
+## Frontend Setup (Vite)
+
+Install JavaScript dependencies:
+
+```bash
+npm install
+```
+
+Start dev server:
+
+```bash
+npm run dev
+```
+
+Build for production:
+
+```bash
+npm run build
+```
